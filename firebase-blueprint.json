@@ -1,0 +1,56 @@
+{
+  "entities": {
+    "JournalEntry": {
+      "title": "JournalEntry",
+      "description": "User journal entry with AI synthesis, thoughts, and reflections.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200, "minLength": 1 },
+        "content": { "type": "string", "maxLength": 30000 },
+        "persona": { "type": "string", "maxLength": 64 },
+        "mode": { "type": "string", "maxLength": 32 },
+        "summary": { "type": "string", "maxLength": 10000 },
+        "sentimentArc": { "type": "string", "maxLength": 100 },
+        "mood": { "type": "string", "maxLength": 32, "description": "User-selected emotional mood icon/state" },
+        "productivityStatus": { "type": "string", "maxLength": 32, "description": "Self-reported productivity status" },
+        "tags": { "type": "array", "description": "Array of tags" },
+        "keyTakeaways": { "type": "array", "description": "Key takeaways" },
+        "actionItems": { "type": "array", "description": "Action items" },
+        "reflectionQuestions": { "type": "array", "description": "Reflection questions" },
+        "messages": { "type": "array", "description": "Conversation turns" },
+        "isEncrypted": { "type": "boolean" },
+        "encryptionIv": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["userId", "title", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User preferences, selected default persona, and privacy configuration.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "defaultPersona": { "type": "string", "maxLength": 64 },
+        "piiScrubbingEnabled": { "type": "boolean" },
+        "zeroKnowledgeEnabled": { "type": "boolean" },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/journals/{journalId}": {
+      "schema": "JournalEntry",
+      "description": "User-isolated collection of journal notes, brainstorm sessions, and AI summaries."
+    },
+    "/users/{userId}/profile/settings": {
+      "schema": "UserProfile",
+      "description": "User-isolated settings and privacy flags."
+    }
+  }
+}

@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Default-Deny Catch-All: Block all unmapped traffic
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Security Primitives & Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation Blueprint for JournalEntry
+    function isValidJournal(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+        (!('content' in data) || (data.content is string && data.content.size() <= 30000)) &&
+        (!('persona' in data) || (data.persona is string && data.persona.size() <= 64)) &&
+        (!('mode' in data) || (data.mode is string && data.mode.size() <= 32)) &&
+        (!('summary' in data) || (data.summary is string && data.summary.size() <= 10000)) &&
+        (!('sentimentArc' in data) || (data.sentimentArc is string && data.sentimentArc.size() <= 100)) &&
+        (!('mood' in data) || (data.mood is string && data.mood.size() <= 32)) &&
+        (!('productivityStatus' in data) || (data.productivityStatus is string && data.productivityStatus.size() <= 32)) &&
+        (!('isEncrypted' in data) || (data.isEncrypted is bool)) &&
+        (!('encryptionIv' in data) || (data.encryptionIv is string && data.encryptionIv.size() <= 64)) &&
+        (!('tags' in data) || (data.tags is list && data.tags.size() <= 15)) &&
+        (!('keyTakeaways' in data) || (data.keyTakeaways is list && data.keyTakeaways.size() <= 15)) &&
+        (!('actionItems' in data) || (data.actionItems is list && data.actionItems.size() <= 15)) &&
+        (!('reflectionQuestions' in data) || (data.reflectionQuestions is list && data.reflectionQuestions.size() <= 10)) &&
+        (!('messages' in data) || (data.messages is list && data.messages.size() <= 60)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    // User-Isolated Journals Collection: Zero Cross-Tenant Leakage
+    match /users/{userId}/journals/{journalId} {
+      allow get: if isOwner(userId) && isValidId(journalId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(journalId) && isValidJournal(incoming());
+      allow update: if isOwner(userId) && isValidId(journalId) && isValidJournal(incoming()) &&
+        incoming().userId == existing().userId &&
+        (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt);
+      allow delete: if isOwner(userId) && isValidId(journalId);
+    }
+
+    // User-Isolated Preferences & Profile Settings
+    match /users/{userId}/profile/{profileId} {
+      allow get: if isOwner(userId) && isValidId(profileId);
+      allow list: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidId(profileId) && 
+        incoming().userId is string && incoming().userId == request.auth.uid;
+      allow delete: if isOwner(userId) && isValidId(profileId);
+    }
+  }
+}
